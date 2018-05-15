@@ -1,0 +1,100 @@
+import csv
+import cv2
+import numpy as np
+import string
+import re
+import matplotlib as plt
+from sklearn.utils import shuffle
+
+lines=[]
+with open('C:\\Users\\Shivam.Chawla01\\Downloads\\data\\data\\driving_log.csv') as csvfile:
+	reader=csv.reader(csvfile)
+	for line in reader:
+		lines.append(line)
+		
+def preprocess(image):
+	image=image[50:135,:,:]
+	image=cv2.resize(image,(64,64))
+	image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+	return image.astype(np.float32)
+	
+images=[]
+measurements=[]
+
+for line in lines[1:]:
+	source_path=line[0]
+	filename=source_path.split('/')[-1]
+	
+	current_path= 'C:/Users/Shivam.Chawla01/downloads/data/data/IMG/'+filename
+	
+	image=cv2.imread(current_path)
+	image = preprocess(image)
+	images.append(image)
+	measurement=float(line[3])	
+	measurements.append(measurement)
+	image_flipped = np.fliplr(image)
+	measurement_flipped = -measurement
+	
+	images.append(image_flipped)
+	measurements.append(measurement_flipped)
+	
+	source_path=line[1]
+	filename=source_path.split('/')[-1]   
+	current_path= 'C:/Users/Shivam.Chawla01/downloads/data/data/IMG/'+filename
+	image=cv2.imread(current_path)
+	image = preprocess(image)
+	images.append(image)
+	measurement=float(line[3])
+	measurement=measurement+0.2
+	measurements.append(measurement)
+	image_flipped = np.fliplr(image)
+	measurement_flipped = -measurement
+	images.append(image_flipped)
+	measurements.append(measurement_flipped)
+	
+	source_path=line[2]
+	filename=source_path.split('/')[-1]
+
+	current_path= 'C:/Users/Shivam.Chawla01/Desktop/data/data/IMG/'+filename
+	
+	image=cv2.imread(current_path)
+	image=preprocess(image)
+	images.append(image)
+	measurement=float(line[3])
+	measurement=measurement-0.3
+	measurements.append(measurement)
+	image_flipped = np.fliplr(image)
+	measurement_flipped = -measurement
+	images.append(image_flipped)
+	measurements.append(measurement_flipped)
+	
+
+X_train=np.array(images)
+y_train=np.array(measurements)
+
+X_train, y_train = shuffle(X_train, y_train)
+
+from keras.models import Sequential
+from keras.layers import Flatten, Dense, Lambda, Dropout
+from keras.layers.convolutional import Convolution2D
+from keras.layers.pooling import MaxPooling2D
+from keras.layers import Cropping2D
+
+model=Sequential()
+model.add(Lambda(lambda x: x/127.5 - 1, input_shape=(64,64,3)))
+model.add(Convolution2D(16,5,5,activation="relu"))
+model.add(MaxPooling2D())
+model.add(Convolution2D(32,3,3,activation="relu"))
+model.add(MaxPooling2D())
+# model.add(Convolution2D(6,5,5,activation="relu"))
+# model.add(MaxPooling2D())
+
+model.add(Flatten())
+model.add(Dense(120))
+model.add(Dropout(0.1))
+model.add(Dense(84))
+model.add(Dense(1))
+model.compile(loss='mse', optimizer='adam')
+model.fit(X_train,y_train,validation_split=0.2, epochs=2, batch_size=32)
+
+model.save('model.h5')
